@@ -1,7 +1,14 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { AuspiciousData } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("Gemini API Key is missing or invalid.");
+    return null;
+  }
+  return new GoogleGenAI({ apiKey });
+};
 
 const auspiciousSchema: Schema = {
   type: Type.OBJECT,
@@ -39,6 +46,11 @@ export const fetchAuspiciousData = async (date: Date): Promise<AuspiciousData> =
   });
 
   try {
+    const ai = getAIClient();
+    if (!ai) {
+      throw new Error("Gemini Client not initialized (Missing API Key)");
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Generate astrological and auspicious data for this date in Thailand: ${dateString}. 
@@ -64,7 +76,7 @@ export const fetchAuspiciousData = async (date: Date): Promise<AuspiciousData> =
       auspiciousColor: "-",
       forbiddenColor: "-",
       auspiciousTime: "-",
-      advice: "กรุณาลองใหม่อีกครั้ง หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ต",
+      advice: "กรุณาลองใหม่อีกครั้ง หรือตรวจสอบ API Key",
       isWanPhra: false,
       element: "-"
     };
@@ -75,6 +87,12 @@ export const fetchWanPhraDays = async (date: Date): Promise<number[]> => {
   const monthYear = date.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
   
   try {
+    const ai = getAIClient();
+    if (!ai) {
+      // Return empty array silently if no key, to avoid spamming errors for background fetches
+      return [];
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: `Identify all Thai Buddhist Holy Days (Wan Phra) for ${monthYear}. 
